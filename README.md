@@ -16,7 +16,7 @@ OpenSCAD is a script-based 3D CAD modeler. Useful for managing multiple versions
 ## Install
 
 ```bash
-asdf plugin add openscad https://github.com/<you>/asdf-openscad.git
+asdf plugin add openscad https://github.com/wguilherme/asdf-openscad.git
 asdf install openscad 2021.01
 asdf set openscad 2021.01
 openscad --version
