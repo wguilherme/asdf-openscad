@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+install_openscad() {
+  local version="$ASDF_INSTALL_VERSION"
+  local install_path="$ASDF_INSTALL_PATH"
+  local platform
+  platform="$(uname -s)"
+
+  local url filename
+
+  case "$platform" in
+    Darwin)
+      filename="OpenSCAD-${version}.dmg"
+      url="https://github.com/openscad/openscad/releases/download/openscad-${version}/${filename}"
+      ;;
+    Linux)
+      local arch
+      arch="$(uname -m)"
+      if [[ "$arch" != "x86_64" ]]; then
+        echo "Error: OpenSCAD only provides Linux binaries for x86_64 (got: $arch)." >&2
+        echo "       See https://openscad.org/downloads.html for alternatives." >&2
+        exit 1
+      fi
+      filename="OpenSCAD-${version}-x86_64.AppImage"
+      url="https://github.com/openscad/openscad/releases/download/openscad-${version}/${filename}"
+      ;;
+    *)
+      echo "Error: Unsupported platform: $platform" >&2
+      exit 1
+      ;;
+  esac
+
+  local tmp_dir
+  tmp_dir="$(mktemp -d)"
+  trap 'rm -rf "$tmp_dir"' EXIT
+
+  echo "Downloading OpenSCAD ${version} for ${platform}..."
+
+  if ! curl -fsSL \
+    ${GITHUB_API_TOKEN:+-H "Authorization: token $GITHUB_API_TOKEN"} \
+    "$url" -o "$tmp_dir/$filename"; then
+    echo "Error: Failed to download $url" >&2
+    echo "       Binary releases are only available for OpenSCAD 2021.01 and later." >&2
+    echo "       Run 'asdf list all openscad' to see available versions." >&2
+    exit 1
+  fi
+
+  mkdir -p "$install_path/bin"
+
+  case "$platform" in
+    Darwin)
+      echo "Mounting DMG..."
+      local mountpoint="$tmp_dir/openscad-mnt"
+      mkdir -p "$mountpoint"
+      hdiutil attach "$tmp_dir/$filename" -quiet -nobrowse -mountpoint "$mountpoint"
+      cp -R "$mountpoint/OpenSCAD.app" "$install_path/"
+      hdiutil detach "$mountpoint" -quiet
+      # Wrapper so `openscad` is on PATH via asdf shims
+      cat > "$install_path/bin/openscad" << 'WRAPPER'
+#!/usr/bin/env bash
+exec "$(dirname "$(dirname "$0")")/OpenSCAD.app/Contents/MacOS/OpenSCAD" "$@"
+WRAPPER
+      chmod +x "$install_path/bin/openscad"
+      ;;
+    Linux)
+      cp "$tmp_dir/$filename" "$install_path/bin/openscad"
+      chmod +x "$install_path/bin/openscad"
+      ;;
+  esac
+
+  echo "OpenSCAD ${version} installed successfully."
+}
+
+install_openscad
