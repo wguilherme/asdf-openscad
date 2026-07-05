@@ -33,13 +33,8 @@ install_openscad() {
 
   local tmp_dir
   tmp_dir="$(mktemp -d)"
-  local mountpoint="$tmp_dir/openscad-mnt"
-
-  cleanup() {
-    hdiutil detach "$mountpoint" -quiet 2>/dev/null || true
-    rm -rf "$tmp_dir"
-  }
-  trap cleanup EXIT
+  # Double-quoted trap captures $tmp_dir at definition time — survives local scope exit
+  trap "hdiutil detach '$tmp_dir/openscad-mnt' -quiet 2>/dev/null; rm -rf '$tmp_dir'" EXIT
 
   echo "Downloading OpenSCAD ${version} for ${platform}..."
 
@@ -57,10 +52,10 @@ install_openscad() {
   case "$platform" in
     Darwin)
       echo "Mounting DMG..."
-      mkdir -p "$mountpoint"
-      hdiutil attach "$tmp_dir/$filename" -quiet -nobrowse -mountpoint "$mountpoint"
-      cp -R "$mountpoint/OpenSCAD-${version}.app" "$install_path/"
-      hdiutil detach "$mountpoint" -quiet
+      mkdir -p "$tmp_dir/openscad-mnt"
+      hdiutil attach "$tmp_dir/$filename" -quiet -nobrowse -mountpoint "$tmp_dir/openscad-mnt"
+      cp -R "$tmp_dir/openscad-mnt/OpenSCAD-${version}.app" "$install_path/"
+      hdiutil detach "$tmp_dir/openscad-mnt" -quiet
       # Stable symlink so the wrapper script doesn't embed the version
       ln -sf "OpenSCAD-${version}.app" "$install_path/OpenSCAD.app"
       # Wrapper puts `openscad` on PATH via asdf shims
