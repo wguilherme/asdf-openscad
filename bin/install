@@ -34,7 +34,7 @@ install_openscad() {
   local tmp_dir
   tmp_dir="$(mktemp -d)"
   # Double-quoted trap captures $tmp_dir at definition time — survives local scope exit
-  trap "hdiutil detach '$tmp_dir/openscad-mnt' -quiet 2>/dev/null; rm -rf '$tmp_dir'" EXIT
+  trap "hdiutil detach '$tmp_dir/openscad-mnt' -quiet 2>/dev/null || true; rm -rf '$tmp_dir'" EXIT
 
   echo "Downloading OpenSCAD ${version} for ${platform}..."
 
